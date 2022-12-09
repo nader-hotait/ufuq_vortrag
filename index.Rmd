@@ -1,0 +1,471 @@
+---
+title: "Emotionen, Radikalisierung und TikTok"
+subtitle: "Beitrag zu: Kollektive Emotionen in Radikalisierungsprozessen und die Rolle von TikTok"
+author:
+  - Nader Hotait<br><br>
+institute:
+  - Humboldt-Universität zu Berlin (BIM)
+  - Universität Mannheim (CDSS)
+date: "Dezember 8, 2022"
+output:
+  xaringan::moon_reader:
+    css: [default, metropolis, metropolis-fonts]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+      # ratio: 16:9
+header-includes:
+  - \usepackage{fancyvrb}
+  - \usepackage{tcolorbox}
+  - \usepackage[nodayofweek,level]{datetime}
+  - \usepackage{multicol}
+  - \usepackage{tikz}
+  - \usepackage{xcolor}
+  - \MakeOuterQuote{"}
+  - \usepackage{csquotes}
+lang: de-DE
+---
+
+# Inhalt
+
+## 1. Key Facts zu TikTok
+## 2. Online-Radikalisierung und TikTok
+## 3. Die Rolle von Emotionen
+## 4. Fallbeispiele
+
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE, echo=FALSE, message=FALSE, warning=FALSE)
+library("rjson")
+library("tidyverse")
+library("purrr")
+library("lubridate")
+library("readxl")
+library("quanteda")
+library("tidytext")
+library("magrittr")
+library("plotly")
+library("ggpubr")
+library("geomtextpath")
+library("quanteda.textmodels")
+library("quanteda.textplots")
+library("quanteda.textstats")
+library("kableExtra")
+
+library(RefManageR)
+BibOptions(
+check.entries = FALSE, 
+bib.style = "authoryear", 
+cite.style = "authoryear", 
+style = "markdown",
+hyperlink = TRUE, 
+dashed = FALSE,
+max.names = 3L)
+myBib = ReadBib("mybib.bib")
+```
+
+
+---
+class: inverse, center, middle
+
+# Was ist so besonders an TikTok?
+
+---
+
+# Nutzung und Demografie
+
+.middle[
+| Indikator                	| Zahlen                                     	|
+|--------------------------	|--------------------------------------------	|
+| **Erstveröffentlichung** 	| 2016 in China (Douyin), 2017 international 	|
+| **Nutzer:innen**         	| > 1 Mrd.                                   	|
+| **Alter**                	| 28% jünger als 18, ca. 60% jünger als 30   	|
+| **Geschlecht**           	| ca. 57% weiblich, ca. 43% männlich         	|
+| **Engagement-Rate**      	| ca. 13-17%                                 	|
+]
+
+--
+
++ Zahlen weichen stark voneinander ab und jeweilige Methodik nicht nachvollziehbar
++ Nach aller Wahrscheinlichkeit besteht die TikTok Demographie aus
+  + vielen,
+  + eher weiblichen,
+  + jungen,
+  + aktiven Nutzer:innen
++ Jünger und aktiver als auf den meisten Social Media Plattformen
+
+---
+
+# TikTok Interface
+
+.center[
+![](tiktok.png)
+]
+
+---
+# Recommender System und Inhalte
+
++ **Algorithmus** `r Citep(myBib, "ZHANG2021846")`:
+  + Schlägt Inhalte vor auf grundlage bestehender Interessen
+  + Gewichtet populäre Accounts weniger stark als andere Plattformen
+  + Ermöglicht schnelle dissemination von Beiträgen
++ **Inhalte:**
+  + Unterhaltung, Sport, Tanz und Musik, Ratgebung und Anleitungen
+  + Auch weitreichende Präsenz von radikalen/extremistischen Inhalten
+  + Beispiele: Religiös `r Citep(myBib, "moduszad1")`, Rechtsradikal `r Citep(myBib, "doi:10.1080/1057610X.2020.1780027")`, Frauen/LGBTQI+ Feindlich `r Citep(myBib, "mm1")`
++ **Moderation:**
+  + Relativ lax
+  + Im Verzug
+  + In den Händen von unterbesetzten und unterbezahlten Arbeiter:innen
+  
+&rarr; **Wild west of social media feeds**
+
+
+---
+class: inverse, center, middle
+
+# Fördert TikTok Radikalisierung?
+
+---
+# Online Radikalisierung und TikTok?
+
+**Wenig beforscht!**
+
+Es gibt Gründe anzunehmen, dass TikTok Radikalisierung fördern könnte:
+
+1. Existenz und Beharrlichkeit radikaler Inhalte
+2. Techniken für Content-Interaktion und künstlerische Untermalung
+3. Volatile Demografien
+4. Effiziente und unbehelligte Verbreitung radikaler Inhalte
+5. Verstärkte Exposition durch Filterblasen?
+
+&rarr; **Annahme: Exposition führt zu Radikalisierung**
++ Umstritten: siehe `r RefManageR::Citet(myBib, c("Hassan2018_2", "wolfowicz2022"))`
++ Medien + ...
+
+&rarr; **Prävalenz radikaler Inhalte muss noch ergründet werden**
+---
+
+# Selbstexperiment TikTok
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE, fig.align='center', fig.height=7, fig.width=11}
+df <- read_xlsx("video_list.xlsx")
+df <- df[c(1:848),]
+
+## DTM
+corpus <- corpus(df, text_field = "comment")
+dtm <- dfm(corpus)
+dtm_df <- tidy(dtm)
+
+df$document <- paste0("text", seq(1:848))
+term_matrix <- left_join(dtm_df, select(df, date, link, document), by.x = "document")
+
+term_matrix <- term_matrix[term_matrix$term != ";",]
+term_matrix$Video <- as.numeric(gsub("text", "", term_matrix$document))
+
+extra <- term_matrix
+extra <- extra %>%
+  mutate(start = case_when(
+  Video <= 296 ~ 0,
+  Video <= 385 ~ 296,
+  TRUE ~ 848
+))
+
+extra <- extra %>%
+  mutate(end = case_when(
+  Video <= 296 ~ 296,
+  Video <= 385 ~ 385,
+  TRUE ~ 848
+))
+
+extra <- extra %>%
+  mutate(colors = case_when(
+  Video <= 296 ~ 1,
+  Video <= 385 ~ 2,
+  TRUE ~ 3
+))
+
+first <- ggplot(extra, aes(x = as.factor(Video), y = term, color = term, text = "")) +
+  geom_point(size = 1, aes(text = paste('Video: ', Video,
+                                        '<br>Subject: ', term))) +
+  theme(axis.text.x = element_blank()) +
+  guides(color="none") +
+  xlab("Video Chronology") +
+  ylab("") +
+  theme(axis.text = element_text(size = 5)) +
+  annotate("rect", xmin=0, xmax=296, ymin=0, ymax=Inf, alpha=0.1, fill="red")  +
+  annotate("rect", xmin=296, xmax=385, ymin=0, ymax=Inf, alpha=0.1, fill="aquamarine") +
+  annotate("rect", xmin=385, xmax=Inf, ymin=0, ymax=Inf, alpha=0.1, fill="cornflowerblue")
+
+first <- ggplotly(first, tooltip = "text")
+
+first <- first %>% layout(showlegend = FALSE)
+
+first
+```
+
+---
+
+# Religion
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE, fig.width=11, fig.align='center'}
+islm <- c("nasheed_ext", "rad_bezug")
+
+islm_df <- term_matrix$document[grep(paste(islm, collapse="|"), term_matrix$term)]
+islm_df <- term_matrix[term_matrix$document %in% islm_df,]
+
+islm_df <- islm_df %>%
+  mutate(to_highlight = case_when(
+    term %in% islm~ 1L,
+    TRUE ~ 0L
+  ))
+
+q <- ggplot(islm_df, aes(x = as.factor(Video), y = term, color = to_highlight, text = "")) +
+  geom_point(aes(shape = as.factor(to_highlight), size=2, text = paste('Video: ', Video,
+                                                                       '<br>Subject: ', term))) +
+  # theme(axis.text.x = element_blank()) +
+  guides(color="none", shape = "none", size = "none") +
+  xlab("Video Chronology") +
+  ylab("")
+
+q <- ggplotly(q, tooltip = "text")
+
+q <- q %>% layout(showlegend = FALSE)
+
+q <- q %>%
+  layout(hovermode = "x unified")
+
+q
+```
+
+---
+
+# Rechte Inhalte
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE, fig.width=11, fig.align='center'}
+rw <- c("wehrmacht", "turkish_nationalism", "right_wing", "misogyny", "anti_feminism", "greek_nationalism", "anti_ukraine")
+
+rw_df <- term_matrix$document[grep(paste(rw, collapse="|"), term_matrix$term)]
+rw_df <- term_matrix[term_matrix$document %in% rw_df,]
+
+rw_df <- rw_df %>%
+  mutate(to_highlight = case_when(
+    term %in% rw ~ 1L,
+    TRUE ~ 0L
+  ))
+
+p <- ggplot(rw_df, aes(x = as.factor(Video), y = term, color = to_highlight, text ="")) +
+  geom_point(aes(shape = as.factor(to_highlight), size=2, text = paste('Video: ', Video,
+                                                                       '<br>Subject: ', term))) +
+  # theme(axis.text.x = element_blank()) +
+  guides(color="none", shape = "none", size = "none") +
+  xlab("Video Chronology") +
+  ylab("")
+
+p <- ggplotly(p, tooltip = "text")
+
+p <- p %>% layout(showlegend = FALSE)
+p <- p %>%
+  layout(hovermode = "x unified")
+p
+```
+
+---
+
+class: inverse, center, middle
+
+# Rolle von Emotionen in der Radikalisierung
+
+---
+
+# Emotionen und Radikalisierung
+
++ Emotionen fördern das "überzeugt werden"
+  + Aristoteles und Rhetorik: Ethos, Logos und Pathos
+  + Emotionale Identifikation mit einer Erzählung "überredet" `r Citep(myBib, "poletta2020")`
+    - Fördert Zuwendung zu einem Thema
+    - Suspendiert die Tendenz Gegenargumente zu formulieren
++ Radikalisierung als Prozess des überzeugt werdens?
+  + Von Problemkonstruktion
+  + Vom Lösungsvorschlag bzw. Handlungsnotwendigkeit
++ Rolle von Emotionen in der Radikalisierung `r Citep(myBib, "McCauley2017")`:
+  + Insbesondere: Wut, Scham, Schuld, Demütigung, Angst, Liebe und Hass
+  + Gepaart mit reelen, gruppenbezogenen Erfahrungen von Gewalt, Diskriminierung bzw. Feindlichkeit
+  + Löst Drang zu einer persönlichen moralischen Verpflichtung gegen "Täter" vorzugehen aus
+
+&rarr; **Viktimisierung als zentrales Element im Nexus Emotionen und Radikalisierung**
+
+---
+
+# TikTok und Emotionen
+
+**Wir wissen um die Rolle von:**
+
++ Persönliche Opfererfahrung, politische Missstände `r Citep(myBib, "mccauley2008")`, Wahrgenommene Diskriminierung, Gruppenbedrohung, Verfahrensungerechtigkeit, Illegitimität der politischen Entscheidungsträger `r Citep(myBib, "Emmelkamp2020")`
++ Kunst/Musik als Auslöser von Emotionen bzw. emotionale Untermalung von Inhalt
++ Einfluss von Konsumption radikaler Inhalte gepaart mit anderen psychosozialen Faktoren auf Radikalisierung
+
+--
+
+**Zugleich:**
+
++ Existenz oft unmoderierter radikaler Inhalte auf TikTok
++ TikToks Angebot für verschiedene technische Möglichkeiten:
+  + Mit Content zu intagieren
+  + Content mit Medien zu kombinieren
+  + Content effizient zu streuen
+  
+--
+
+**Transport von Emotionen durch radikale TikTok Beiträge &rarr; Radikalisierung?**
+
+---
+
+class: inverse, center, middle
+
+# Fallbeispiele
+
+---
+
+# Muslim Interaktiv
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=11}
+mus_df <- read_excel("mus_data.xlsx")
+
+mus_df$video_length <- format(mus_df$video_length , format="%H:%M:%S")
+mus_df$video_length <- hms(mus_df$video_length)
+mus_df$video_length <- as.duration(mus_df$video_length)
+
+ts_g <- ggplot(mus_df, aes(x = video_date, y = video_likes, text= paste('Datum: ', video_date,
+                                                                        '<br>Likes: ', video_likes,
+                                                                        '<br>Länge: ', video_length))) +
+  geom_point(aes(size = video_length), alpha = 1/2) +
+  scale_size(range = c(0, 12)) +
+  ylab("Likes") +
+  xlab("Datum") +
+  geom_vline(xintercept = as.numeric(as.POSIXct(as.Date("2021-9-4"))), 
+             color = "aquamarine3", 
+             lwd = 0.5, linetype=2)  +
+  annotate("text", x = as.POSIXct(as.Date("2021-9-4")), y = 40000, size = 2, label = "Ann. 11.09.") +
+  geom_vline(xintercept = as.numeric(as.POSIXct(as.Date("2021-7-1"))), 
+             color = "aquamarine3", 
+             lwd = 0.5, linetype=2)  +
+  annotate("text", x = as.POSIXct(as.Date("2021-7-1")), y = 40000, size = 2, label = "Ann. Marwa El-Sherbini") +
+  geom_vline(xintercept = as.numeric(as.POSIXct(as.Date("2021-3-10"))), 
+             color = "aquamarine3", 
+             lwd = 0.5, linetype=2)  +
+  annotate("text", x = as.POSIXct(as.Date("2021-3-10")), y = 40000, size = 2, label = "Ann. Christchurch") +
+  geom_vline(xintercept = as.numeric(as.POSIXct(as.Date("2021-3-27"))), 
+             color = "aquamarine3", 
+             lwd = 0.5, linetype=2)  +
+  annotate("text", x = as.POSIXct(as.Date("2021-3-27")), y = 30000, size = 2, label = "Rassismus Polizei") +
+  geom_vline(xintercept = as.numeric(as.POSIXct(as.Date("2021-5-23"))), 
+             color = "aquamarine3", 
+             lwd = 0.5, linetype=2)  +
+  annotate("text", x = as.POSIXct(as.Date("2021-5-23")), y = 30000, size = 2, label = "C.Özdemir Araber Zitat") +
+  geom_vline(xintercept = as.numeric(as.POSIXct(as.Date("2021-5-7"))), 
+             color = "aquamarine3", 
+             lwd = 0.5, linetype=2)  +
+  annotate("text", x = as.POSIXct(as.Date("2021-5-7")), y = 40000, size = 2, label = "Bundesratbeschl. Kopftuch\nAl-Aqsa") +
+  geom_vline(xintercept = as.numeric(as.POSIXct(as.Date("2021-7-28"))), 
+             color = "aquamarine3", 
+             lwd = 0.5, linetype=2)  +
+  annotate("text", x = as.POSIXct(as.Date("2021-7-28")), y = 30000, size = 2, label = "S.Kurz Bild Interview") +
+  geom_vline(xintercept = as.numeric(as.POSIXct(as.Date("2021-2-17"))), 
+             color = "aquamarine3", 
+             lwd = 0.5, linetype=2)  +
+  annotate("text", x = as.POSIXct(as.Date("2021-2-17")), y = 30000, size = 2, label = "Ann. Hanau") +
+  geom_vline(xintercept = as.numeric(as.POSIXct(as.Date("2021-10-22"))), 
+             color = "aquamarine3", 
+             lwd = 0.5, linetype=2)  +
+  annotate("text", x = as.POSIXct(as.Date("2021-10-22")), y = 30000, size = 2, label = "Bild Adhan") +
+  guides(size=guide_legend(title="Video Length")) +
+  theme_light()
+
+ts_g <- ggplotly(ts_g, tooltip = "text")
+
+ts_g <- ts_g %>%
+  layout(hovermode = "x unified")
+
+ts_g
+```
+
+---
+
+# Video 1
+
+<blockquote class="tiktok-embed" cite="https://www.tiktok.com/@musliminteraktiv/video/6939567094958738693" data-video-id="6939567094958738693" style="max-width: 605px;min-width: 325px;" > <section> <a target="_blank" title="@musliminteraktiv" href="https://www.tiktok.com/@musliminteraktiv?refer=embed">@musliminteraktiv</a> 5 Monate nach dem Massaker in Christchurch sprechen die Familien der Opfer zum Terroristen❗️ <a title="fyp" target="_blank" href="https://www.tiktok.com/tag/fyp?refer=embed">#fyp</a> <a title="christchurch" target="_blank" href="https://www.tiktok.com/tag/christchurch?refer=embed">#christchurch</a> <a title="islam" target="_blank" href="https://www.tiktok.com/tag/islam?refer=embed">#islam</a> <a title="ummah" target="_blank" href="https://www.tiktok.com/tag/ummah?refer=embed">#ummah</a> <a title="muslimtiktok" target="_blank" href="https://www.tiktok.com/tag/muslimtiktok?refer=embed">#muslimtiktok</a> <a title="viral" target="_blank" href="https://www.tiktok.com/tag/viral?refer=embed">#viral</a> <a target="_blank" title="♬ original sound" href="https://www.tiktok.com/music/original-sound-6833943023383055110?refer=embed">♬ original sound</a> </section> </blockquote> <script async src="https://www.tiktok.com/embed.js"></script>
+
+---
+
+# Video 2
+
+<blockquote class="tiktok-embed" cite="https://www.tiktok.com/@musliminteraktiv/video/6979876967390792965" data-video-id="6979876967390792965" style="max-width: 605px;min-width: 325px;" > <section> <a target="_blank" title="@musliminteraktiv" href="https://www.tiktok.com/@musliminteraktiv?refer=embed">@musliminteraktiv</a> Am 1.Juli 2009 wurde <a title="marwa" target="_blank" href="https://www.tiktok.com/tag/marwa?refer=embed">#Marwa</a> El-Sherbini von einem <a title="islamhasser" target="_blank" href="https://www.tiktok.com/tag/islamhasser?refer=embed">#Islamhasser</a> mit 18 <a title="stichen" target="_blank" href="https://www.tiktok.com/tag/stichen?refer=embed">#Stichen</a> im <a title="gerichtssaal" target="_blank" href="https://www.tiktok.com/tag/gerichtssaal?refer=embed">#Gerichtssaal</a> ermordet❗️<a title="islam" target="_blank" href="https://www.tiktok.com/tag/islam?refer=embed">#Islam</a> <a title="muslima" target="_blank" href="https://www.tiktok.com/tag/muslima?refer=embed">#muslima</a> <a title="viral" target="_blank" href="https://www.tiktok.com/tag/viral?refer=embed">#viral</a> <a title="fyp" target="_blank" href="https://www.tiktok.com/tag/fyp?refer=embed">#fyp</a> <a title="muslimtiktok" target="_blank" href="https://www.tiktok.com/tag/muslimtiktok?refer=embed">#muslimtiktok</a> <a target="_blank" title="♬ Originalton - Muslim Interaktiv" href="https://www.tiktok.com/music/Originalton-6979876644500638470?refer=embed">♬ Originalton - Muslim Interaktiv</a> </section> </blockquote> <script async src="https://www.tiktok.com/embed.js"></script>
+
+---
+
+# Video 3
+
+<blockquote class="tiktok-embed" cite="https://www.tiktok.com/@musliminteraktiv/video/6965483437650218246" data-video-id="6965483437650218246" style="max-width: 605px;min-width: 325px;" > <section> <a target="_blank" title="@musliminteraktiv" href="https://www.tiktok.com/@musliminteraktiv?refer=embed">@musliminteraktiv</a> Cem Özdemir zitiert eine rassistische Aussage der ehemaligen israelischen Ministerpräsidentin❗️<a title="fyp" target="_blank" href="https://www.tiktok.com/tag/fyp?refer=embed">#fyp</a> <a title="rassismus" target="_blank" href="https://www.tiktok.com/tag/rassismus?refer=embed">#rassismus</a> <a title="freepalestine" target="_blank" href="https://www.tiktok.com/tag/freepalestine?refer=embed">#freepalestine</a> <a title="islam" target="_blank" href="https://www.tiktok.com/tag/islam?refer=embed">#Islam</a> <a title="viral" target="_blank" href="https://www.tiktok.com/tag/viral?refer=embed">#viral</a> <a target="_blank" title="♬ Originalton - 🥷🏽" href="https://www.tiktok.com/music/Originalton-6890669849765350145?refer=embed">♬ Originalton - 🥷🏽</a> </section> </blockquote> <script async src="https://www.tiktok.com/embed.js"></script>
+
+---
+
+class: inverse, center, middle
+
+# Salafi Beispiele
+
+---
+
+# Video 1
+
+<blockquote class="tiktok-embed" cite="https://www.tiktok.com/@tauhid.tr/video/7070582267151699206" data-video-id="7070582267151699206" style="max-width: 605px;min-width: 325px;" > <section> <a target="_blank" title="@tauhid.tr" href="https://www.tiktok.com/@tauhid.tr?refer=embed">@tauhid.tr</a> <a title="tauhid" target="_blank" href="https://www.tiktok.com/tag/tauhid?refer=embed">#tauhid</a> <a title="islam" target="_blank" href="https://www.tiktok.com/tag/islam?refer=embed">#islam</a> <a title="tevhid" target="_blank" href="https://www.tiktok.com/tag/tevhid?refer=embed">#tevhid</a> <a title="muslim" target="_blank" href="https://www.tiktok.com/tag/muslim?refer=embed">#muslim</a> <a title="muhammad" target="_blank" href="https://www.tiktok.com/tag/muhammad?refer=embed">#muhammad</a> <a title="freitag" target="_blank" href="https://www.tiktok.com/tag/freitag?refer=embed">#freitag</a> <a title="segenwünschenaufunserempropheten" target="_blank" href="https://www.tiktok.com/tag/segenw%C3%BCnschenaufunserempropheten?refer=embed">#segenwünschenaufunserempropheten</a> <a title="islamic" target="_blank" href="https://www.tiktok.com/tag/islamic?refer=embed">#islamic</a> <a title="gebet" target="_blank" href="https://www.tiktok.com/tag/gebet?refer=embed">#gebet</a> <a title="selef" target="_blank" href="https://www.tiktok.com/tag/selef?refer=embed">#selef</a> <a title="beten" target="_blank" href="https://www.tiktok.com/tag/beten?refer=embed">#beten</a> <a title="pierrevogeldawa" target="_blank" href="https://www.tiktok.com/tag/pierrevogeldawa?refer=embed">#pierrevogeldawa</a> <a title="fyp" target="_blank" href="https://www.tiktok.com/tag/fyp?refer=embed">#fyp</a> <a target="_blank" title="♬ Originalton - Tauhid.Tr" href="https://www.tiktok.com/music/Originalton-7070582263548742405?refer=embed">♬ Originalton - Tauhid.Tr</a> </section> </blockquote> <script async src="https://www.tiktok.com/embed.js"></script>
+
+---
+
+# Video 2
+
+<blockquote class="tiktok-embed" cite="https://www.tiktok.com/@akhitachi/video/7058969895320849670" data-video-id="7058969895320849670" style="max-width: 605px;min-width: 325px;" > <section> <a target="_blank" title="@akhitachi" href="https://www.tiktok.com/@akhitachi?refer=embed">@akhitachi</a> Oh Mutter🥺😭 <a title="islam" target="_blank" href="https://www.tiktok.com/tag/islam?refer=embed">#islam</a> <a title="islamdeutsch" target="_blank" href="https://www.tiktok.com/tag/islamdeutsch?refer=embed">#islamdeutsch</a> <a title="abulbaraa" target="_blank" href="https://www.tiktok.com/tag/abulbaraa?refer=embed">#abulbaraa</a> <a title="muhammadsaw" target="_blank" href="https://www.tiktok.com/tag/muhammadsaw?refer=embed">#muhammadsaw</a> <a title="emotional" target="_blank" href="https://www.tiktok.com/tag/emotional?refer=embed">#emotional</a> <a title="traurig" target="_blank" href="https://www.tiktok.com/tag/traurig?refer=embed">#traurig</a> <a title="mutter" target="_blank" href="https://www.tiktok.com/tag/mutter?refer=embed">#mutter</a> <a title="fürdich" target="_blank" href="https://www.tiktok.com/tag/f%C3%BCrdich?refer=embed">#fürdich</a> <a title="fyp" target="_blank" href="https://www.tiktok.com/tag/fyp?refer=embed">#fyp</a> <a title="fy" target="_blank" href="https://www.tiktok.com/tag/fy?refer=embed">#fy</a> <a target="_blank" title="♬ Originalton - Akh Itachi" href="https://www.tiktok.com/music/Originalton-7058969875603032837?refer=embed">♬ Originalton - Akh Itachi</a> </section> </blockquote> <script async src="https://www.tiktok.com/embed.js"></script>
+
+---
+
+# Video 3
+
+<blockquote class="tiktok-embed" cite="https://www.tiktok.com/@i.s.l.a.m_d.u.n.y.a/video/6955862732876958982" data-video-id="6955862732876958982" style="max-width: 605px;min-width: 325px;" > <section> <a target="_blank" title="@i.s.l.a.m_d.u.n.y.a" href="https://www.tiktok.com/@i.s.l.a.m_d.u.n.y.a?refer=embed">@i.s.l.a.m_d.u.n.y.a</a> <a title="abulbaraa" target="_blank" href="https://www.tiktok.com/tag/abulbaraa?refer=embed">#abulbaraa</a> <a title="viral" target="_blank" href="https://www.tiktok.com/tag/viral?refer=embed">#viral</a> <a title="emotional" target="_blank" href="https://www.tiktok.com/tag/emotional?refer=embed">#emotional</a> <a title="muslim" target="_blank" href="https://www.tiktok.com/tag/muslim?refer=embed">#muslim</a> <a title="fypシ" target="_blank" href="https://www.tiktok.com/tag/fyp%E3%82%B7?refer=embed">#fypシ</a> <a title="islamtiktok" target="_blank" href="https://www.tiktok.com/tag/islamtiktok?refer=embed">#islamtiktok</a> <a title="fy" target="_blank" href="https://www.tiktok.com/tag/fy?refer=embed">#fy</a> <a target="_blank" title="♬ Originalton - Allahu Akbar" href="https://www.tiktok.com/music/Originalton-6955862621564324613?refer=embed">♬ Originalton - Allahu Akbar</a> </section> </blockquote> <script async src="https://www.tiktok.com/embed.js"></script>
+
+---
+
+# Video 4
+
+<blockquote class="tiktok-embed" cite="https://www.tiktok.com/@leguanderalbo/video/7099448949890616582" data-video-id="7099448949890616582" style="max-width: 605px;min-width: 325px;" > <section> <a target="_blank" title="@leguanderalbo" href="https://www.tiktok.com/@leguanderalbo?refer=embed">@leguanderalbo</a> Islam🏴👆🏻 <a title="islam" target="_blank" href="https://www.tiktok.com/tag/islam?refer=embed">#islam</a> <a title="kefir" target="_blank" href="https://www.tiktok.com/tag/kefir?refer=embed">#kefir</a> <a title="kafir" target="_blank" href="https://www.tiktok.com/tag/kafir?refer=embed">#kafir</a> <a title="muslim" target="_blank" href="https://www.tiktok.com/tag/muslim?refer=embed">#muslim</a> <a title="abulbaara" target="_blank" href="https://www.tiktok.com/tag/abulbaara?refer=embed">#abulbaara</a> <a title="hijabi" target="_blank" href="https://www.tiktok.com/tag/hijabi?refer=embed">#hijabi</a> <a target="_blank" title="♬ Originalton - SUHA REKA" href="https://www.tiktok.com/music/Originalton-7099448936968030981?refer=embed">♬ Originalton - SUHA REKA</a> </section> </blockquote> <script async src="https://www.tiktok.com/embed.js"></script>
+
+---
+
+class: inverse, center, middle
+
+# Vielen Dank für Ihre Aufmerksamkeit
+
+---
+
+# Literatur
+
+```{r, results='asis', echo=FALSE, warning=FALSE}
+PrintBibliography(myBib, start=1, end=4)
+```
+
+---
+
+# Literatur
+
+```{r, results='asis', echo=FALSE, warning=FALSE}
+PrintBibliography(myBib, start=5, end=8)
+```
+
+---
+
+# Literatur
+
+```{r, results='asis', echo=FALSE, warning=FALSE}
+PrintBibliography(myBib, start=9, end=14)
+```
